@@ -1,7 +1,9 @@
 name: arbitrary
 
-num_target_views: 1
-num_context_views: 2
+num_target_views: 4
+num_context_views: 3
 
 # If you want to hard-code context views, do so here.
-context_views: null
+context_views: [0, 2, 4]
+target_views: [1, 3, 5, 6]
+

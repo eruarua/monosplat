@@ -174,6 +174,36 @@ class ModelWrapper(LightningModule):
         if self.step_tracker is not None:
             self.step_tracker.set_step(self.global_step)
 
+        # Log training images to wandb every 1000 steps
+        if (
+            self.global_rank == 0
+            and self.global_step % 1000 == 0
+            and self.logger is not None
+            and hasattr(self.logger, 'experiment')
+        ):
+            try:
+                # Get predictions and ground truth
+                pred = output.color  # shape: [B, V, C, H, W]
+                gt = target_gt       # shape: [B, V, C, H, W]
+
+                # Take first batch and first target view for visualization
+                pred_img = pred[0, 0].detach().cpu().clamp(0, 1)
+                gt_img = gt[0, 0].detach().cpu().clamp(0, 1)
+
+                # Convert to numpy for wandb
+                pred_np = (pred_img.permute(1, 2, 0).numpy() * 255).astype('uint8')
+                gt_np = (gt_img.permute(1, 2, 0).numpy() * 255).astype('uint8')
+
+                # Log to wandb
+                import wandb
+                self.logger.experiment.log({
+                    "train/prediction": wandb.Image(pred_np, caption=f"Step {self.global_step}"),
+                    "train/ground_truth": wandb.Image(gt_np, caption=f"Step {self.global_step}"),
+                })
+            except Exception as e:
+                # Don't crash training if visualization fails
+                print(f"Failed to log training images: {e}")
+
         return total_loss
 
     def test_step(self, batch, batch_idx):
@@ -316,6 +346,34 @@ class ModelWrapper(LightningModule):
             self.log(f"val/lpips_{tag}", lpips)
             ssim = compute_ssim(rgb_gt, rgb).mean()
             self.log(f"val/ssim_{tag}", ssim)
+
+        # Log validation images to wandb for fixed samples (first 3 batches)
+        if (
+            self.global_rank == 0
+            and batch_idx < 3
+            and self.logger is not None
+            and hasattr(self.logger, 'experiment')
+        ):
+            try:
+                # rgb_softmax shape: [V, C, H, W], rgb_gt shape: [V, C, H, W]
+                # Take first target view for visualization
+                pred_img = rgb_softmax[0].detach().cpu().clamp(0, 1)
+                gt_img = rgb_gt[0].detach().cpu().clamp(0, 1)
+
+                # Convert to numpy for wandb
+                pred_np = (pred_img.permute(1, 2, 0).numpy() * 255).astype('uint8')
+                gt_np = (gt_img.permute(1, 2, 0).numpy() * 255).astype('uint8')
+
+                # Log to wandb
+                import wandb
+                scene_name = batch['scene'][0][:50]  # Truncate if too long
+                self.logger.experiment.log({
+                    f"val/prediction_batch{batch_idx}": wandb.Image(pred_np, caption=f"Step {self.global_step}, Scene: {scene_name}"),
+                    f"val/ground_truth_batch{batch_idx}": wandb.Image(gt_np, caption=f"Step {self.global_step}, Scene: {scene_name}"),
+                })
+            except Exception as e:
+                # Don't crash validation if visualization fails
+                print(f"Failed to log validation images for batch {batch_idx}: {e}")
 
 
     @rank_zero_only

@@ -1,0 +1,17 @@
+defaults:
+  - view_sampler: arbitrary
+
+name: nersemble
+roots: [/data/baosongze/workspace/3D/3D_debug_data/nersemble_data_expand]
+view_names: ['222200037', '220700191', '221501007', '222200036', '222200046', '222200047', '222200049']
+make_baseline_1: false
+augment: true
+
+image_shape: [256, 256]
+background_color: [0.0, 0.0, 0.0]
+cameras_are_circular: false
+
+baseline_epsilon: 1e-3
+near: 0.1
+far: 100.0
+shuffle_val: true

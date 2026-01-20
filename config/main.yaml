@@ -7,7 +7,7 @@ defaults:
 
 wandb:
   project: anysplat
-  entity: vvvsice
+  entity: null
   name: placeholder
   mode: online
   id: null
